@@ -6,7 +6,7 @@ FlyerTrack is a mobile-first web application for planning, capturing, and analys
 
 - **Role-based workspace** – log in as an administrator to monitor every branch or as a branch operator restricted to your own territory.
 - **Interactive analytics** – animated KPI cards, an ECharts branch performance graph, and a Leaflet map with colour-coded markers per branch.
-- **Comprehensive records** – complete CRUD workflow for flyer drops, including GPS coordinates, captured photos with preview, and multi-language customer-type options (English, Thai, Burmese).
+- **Comprehensive records** – complete CRUD workflow for flyer drops, including one-tap GPS capture from the device, mobile camera photo capture with preview, and multi-language customer-type options (English, Thai, Burmese).
 - **Advanced filtering & export** – filter records by branch, customer type, or date and export the visible dataset to Excel (powered by SheetJS).
 - **Data format management** – dedicated admin console for maintaining export templates with configurable metadata, status controls, and Excel export of individual or bulk configurations.
 - **Responsive experience** – Tailwind CSS styling with Anime.js transitions optimised for mobile workflows.

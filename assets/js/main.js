@@ -88,11 +88,21 @@ const FlyerTrackApp = (() => {
             fieldFlyers: 'Number of Flyers',
             fieldInteractions: 'Customer Interactions',
             fieldCustomerType: 'Customer Type',
+            fieldLocation: 'Location',
             fieldLatitude: 'Latitude',
             fieldLongitude: 'Longitude',
             fieldNotes: 'Notes',
             fieldPhoto: 'Photo Capture',
-            photoHint: 'Upload a quick snapshot of the distribution point',
+            photoHint: 'Use your phone camera to capture the distribution point',
+            locationAction: 'Use current location',
+            locationFetching: 'Capturing GPS signal…',
+            locationReady: 'Ready to capture GPS location from your device',
+            locationSuccess: 'Location captured from your device',
+            locationLoaded: 'Existing record location loaded',
+            locationError: 'Unable to capture location. Please try again.',
+            locationPermission: 'Location permission denied. Enable GPS to continue.',
+            locationUnavailable: 'Device location is unavailable in this browser.',
+            locationToastSuccess: 'GPS location captured',
             cancel: 'Cancel',
             saveRecord: 'Save Record',
             formatModalTitle: 'Data Format',
@@ -202,11 +212,21 @@ const FlyerTrackApp = (() => {
             fieldFlyers: 'จำนวนแผ่นพับ',
             fieldInteractions: 'จำนวนการพบลูกค้า',
             fieldCustomerType: 'ประเภทลูกค้า',
+            fieldLocation: 'ตำแหน่งพิกัด',
             fieldLatitude: 'ละติจูด',
             fieldLongitude: 'ลองจิจูด',
             fieldNotes: 'หมายเหตุ',
             fieldPhoto: 'บันทึกรูปถ่าย',
-            photoHint: 'อัปโหลดรูปภาพจุดที่แจกอย่างรวดเร็ว',
+            photoHint: 'ใช้กล้องบนมือถือถ่ายจุดที่แจก',
+            locationAction: 'ใช้พิกัดปัจจุบัน',
+            locationFetching: 'กำลังจับสัญญาณ GPS…',
+            locationReady: 'พร้อมจับพิกัดจากอุปกรณ์ของคุณ',
+            locationSuccess: 'ดึงพิกัดจากอุปกรณ์เรียบร้อยแล้ว',
+            locationLoaded: 'โหลดพิกัดจากบันทึกเดิมแล้ว',
+            locationError: 'ไม่สามารถดึงพิกัดได้ โปรดลองอีกครั้ง',
+            locationPermission: 'ไม่ได้รับสิทธิ์พิกัด กรุณาเปิดใช้งาน GPS',
+            locationUnavailable: 'อุปกรณ์นี้ไม่รองรับการระบุตำแหน่งในเบราว์เซอร์นี้',
+            locationToastSuccess: 'บันทึกพิกัด GPS แล้ว',
             cancel: 'ยกเลิก',
             saveRecord: 'บันทึกข้อมูล',
             formatModalTitle: 'รูปแบบข้อมูล',
@@ -316,11 +336,21 @@ const FlyerTrackApp = (() => {
             fieldFlyers: 'ကြော်ငြာစာရွက် အရေအတွက်',
             fieldInteractions: 'တွေ့ဆုံမှု အရေအတွက်',
             fieldCustomerType: 'ဖောက်သည် အမျိုးအစား',
+            fieldLocation: 'တည်နေရာ',
             fieldLatitude: 'လတ္တီကျု',
             fieldLongitude: 'လောင်ဂျီကျု',
             fieldNotes: 'မှတ်စု',
             fieldPhoto: 'ဓာတ်ပုံ ကွန်ယက်',
-            photoHint: 'ဖြန့်ချိရာနေရာ ဓာတ်ပုံကို အမြန်တင်ပါ',
+            photoHint: 'ဖိုင်ယာဖြန့်ချိရာနေရာကို ဖုန်းကင်မရာဖြင့် ဓာတ်ပုံရိုက်ပါ',
+            locationAction: 'လက်ရှိတည်နေရာယူမည်',
+            locationFetching: 'GPS ကို ရယူနေပါသည်…',
+            locationReady: 'သင့်စက်ပစ္စည်းမှ GPS တည်နေရာယူရန်အတွက် အဆင်သင့်ဖြစ်ပါသည်',
+            locationSuccess: 'သင့်စက်ပစ္စည်းမှ တည်နေရာကို ရယူပြီးပါပြီ',
+            locationLoaded: 'ယခင်မှတ်တမ်းရှိ တည်နေရာကို တင်သွင်းထားပါသည်',
+            locationError: 'တည်နေရာရယူရန် မအောင်မြင်ပါ။ ထပ်မံကြိုးစားပါ',
+            locationPermission: 'တည်နေရာခွင့်ပြုချက် လိုအပ်ပါသည်။ GPS ကို ဖွင့်ပေးပါ',
+            locationUnavailable: 'ဤဘရောက်ဇာတွင် စက်ပစ္စည်းတည်နေရာ မရရှိနိုင်ပါ',
+            locationToastSuccess: 'GPS တည်နေရာကို သိမ်းဆည်းပြီးပါပြီ',
             cancel: 'ပယ်ဖျက်',
             saveRecord: 'မှတ်တမ်းသိမ်းမည်',
             formatModalTitle: 'ဒေတာဖော်မတ်',
@@ -533,6 +563,102 @@ const FlyerTrackApp = (() => {
 
     const currentTranslations = () => translations[state.language] || translations.en;
 
+    const LOCATION_STATUS_COLORS = {
+        locationFetching: 'text-amber-600',
+        locationSuccess: 'text-emerald-600',
+        locationLoaded: 'text-emerald-600',
+        locationError: 'text-rose-600',
+        locationPermission: 'text-rose-600',
+        locationUnavailable: 'text-rose-600'
+    };
+
+    const hasGeolocationSupport = () => typeof navigator !== 'undefined' && !!navigator.geolocation;
+
+    let recordLocationStatusKey = 'locationReady';
+    let recordLocationLoading = false;
+
+    const renderLocationStatus = () => {
+        const statusEl = qs('#recordLocationStatus');
+        if (!statusEl) return;
+        const dict = currentTranslations();
+        const fallback = translations.en;
+        const message = dict[recordLocationStatusKey] || fallback[recordLocationStatusKey] || '';
+        statusEl.textContent = message;
+        const colorClasses = ['text-slate-500', 'text-amber-600', 'text-emerald-600', 'text-rose-600'];
+        colorClasses.forEach((cls) => statusEl.classList.remove(cls));
+        statusEl.classList.add(LOCATION_STATUS_COLORS[recordLocationStatusKey] || 'text-slate-500');
+    };
+
+    const renderLocationButtonLabel = () => {
+        const button = qs('#recordUseLocation');
+        if (!button) return;
+        const dict = currentTranslations();
+        const fallback = translations.en;
+        const key = recordLocationLoading ? 'locationFetching' : 'locationAction';
+        button.textContent = dict[key] || fallback[key] || '';
+        const disabled = recordLocationLoading || !hasGeolocationSupport();
+        button.disabled = disabled;
+        button.classList.toggle('opacity-60', disabled);
+        button.classList.toggle('cursor-not-allowed', disabled);
+        button.classList.toggle('pointer-events-none', disabled);
+        button.setAttribute('aria-busy', recordLocationLoading ? 'true' : 'false');
+    };
+
+    const setLocationLoading = (loading) => {
+        recordLocationLoading = loading;
+        renderLocationButtonLabel();
+    };
+
+    const setLocationStatus = (key) => {
+        recordLocationStatusKey = key;
+        renderLocationStatus();
+    };
+
+    const applyLocationToForm = (latitude, longitude) => {
+        const latInput = qs('#recordLatitude');
+        const lngInput = qs('#recordLongitude');
+        if (latInput && Number.isFinite(latitude)) {
+            latInput.value = latitude.toFixed(6);
+        }
+        if (lngInput && Number.isFinite(longitude)) {
+            lngInput.value = longitude.toFixed(6);
+        }
+        [latInput, lngInput].forEach((input) => {
+            if (!input) return;
+            input.classList.add('ring-2', 'ring-blue-200');
+            setTimeout(() => {
+                input.classList.remove('ring-2', 'ring-blue-200');
+            }, 1200);
+        });
+    };
+
+    const requestCurrentLocation = () => {
+        if (recordLocationLoading) return;
+        if (!hasGeolocationSupport()) {
+            setLocationStatus('locationUnavailable');
+            renderLocationButtonLabel();
+            return;
+        }
+        setLocationLoading(true);
+        setLocationStatus('locationFetching');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setLocationLoading(false);
+                applyLocationToForm(position.coords.latitude, position.coords.longitude);
+                setLocationStatus('locationSuccess');
+            },
+            (error) => {
+                setLocationLoading(false);
+                if (error.code === error.PERMISSION_DENIED) {
+                    setLocationStatus('locationPermission');
+                } else {
+                    setLocationStatus('locationError');
+                }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    };
+
     const applyTranslations = () => {
         const dict = currentTranslations();
         qsa('[data-i18n]').forEach((node) => {
@@ -554,6 +680,8 @@ const FlyerTrackApp = (() => {
         renderRecordsTable();
         renderActivity();
         renderFormatsTable();
+        renderLocationButtonLabel();
+        renderLocationStatus();
     };
 
     const populateBranchSelects = () => {
@@ -896,6 +1024,7 @@ const FlyerTrackApp = (() => {
 
         qs('#recordForm').addEventListener('submit', handleRecordSubmit);
         qs('#recordPhoto').addEventListener('change', handlePhotoPreview);
+        qs('#recordUseLocation')?.addEventListener('click', () => requestCurrentLocation());
 
         qs('#recordModal').addEventListener('click', (event) => {
             if (event.target.dataset.close !== undefined || event.target === event.currentTarget) {
@@ -1031,6 +1160,10 @@ const FlyerTrackApp = (() => {
         qs('#photoPreview').classList.add('hidden');
         qs('#photoPreview').src = '';
         qs('#recordDate').value = new Date().toISOString().slice(0, 10);
+        const geoSupported = hasGeolocationSupport();
+        setLocationLoading(false);
+        setLocationStatus(geoSupported ? 'locationReady' : 'locationUnavailable');
+        renderLocationButtonLabel();
         if (state.session?.role === 'branch') {
             qs('#recordBranch').value = state.session.branch;
             qs('#recordBranch').setAttribute('disabled', 'disabled');
@@ -1049,13 +1182,24 @@ const FlyerTrackApp = (() => {
             qs('#recordFlyers').value = record.flyers;
             qs('#recordInteractions').value = record.interactions;
             qs('#recordCustomerType').value = record.customerType;
-            qs('#recordLatitude').value = record.latitude;
-            qs('#recordLongitude').value = record.longitude;
+            const latValue = Number(record.latitude);
+            const lngValue = Number(record.longitude);
+            qs('#recordLatitude').value = Number.isFinite(latValue) ? latValue.toFixed(6) : record.latitude || '';
+            qs('#recordLongitude').value = Number.isFinite(lngValue) ? lngValue.toFixed(6) : record.longitude || '';
             qs('#recordNotes').value = record.notes || '';
             if (record.photo) {
                 qs('#photoPreview').src = record.photo;
                 qs('#photoPreview').classList.remove('hidden');
             }
+            if (Number.isFinite(latValue) && Number.isFinite(lngValue)) {
+                setLocationStatus('locationLoaded');
+            } else if (!geoSupported) {
+                setLocationStatus('locationUnavailable');
+            } else {
+                setLocationStatus('locationReady');
+            }
+        } else if (geoSupported) {
+            requestCurrentLocation();
         }
         modal.classList.remove('hidden');
         modal.classList.add('flex');
