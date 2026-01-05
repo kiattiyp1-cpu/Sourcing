@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlyerTrack Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-o9N1j8MpprXng1z6kGSt6xtJdKyXjE2S2aQbqYJbQ+8=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9qkzU+ZP8Bs00rF1yyglNQxFUs7t4PaItzBti4Hvcw=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha512-98kPgG3oK2rU9jwELyhl725LLJoPLD114F8CbnMD4PlzyBbs6k8ZZrVSu2VvulaHYodNs/WSavD0LV2D6C1u/Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {font-family: 'Inter', sans-serif;}
+        body {background: #f1f5f9; color: #0f172a;}
+        #map {height: 280px;}
+        .modal {backdrop-filter: blur(6px);}
+        .scrollbar-thin::-webkit-scrollbar {width: 6px;}
+        .scrollbar-thin::-webkit-scrollbar-thumb {background: rgba(30, 64, 175, 0.4); border-radius: 999px;}
+        .scrollbar-thin::-webkit-scrollbar-track {background: transparent;}
+        .nav-btn {padding: 0.5rem 1.25rem; border-radius: 9999px; border: 1px solid transparent; background: transparent; color: #1e293b; font-weight: 500; letter-spacing: 0.01em; transition: all 0.2s ease;}
+        .nav-btn:hover {background: #e2e8f0;}
+        .nav-btn.active {background: #1d4ed8; color: #fff; box-shadow: 0 12px 24px -16px rgba(29, 78, 216, 0.6);}
+        .stat-card {display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: 1.5rem; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 12px 40px -24px rgba(15, 23, 42, 0.35);}
+        .stat-icon {display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px;}
+        .stat-label {font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 0.25rem;}
+        .stat-value {font-size: 1.75rem; font-weight: 700; color: #0f172a;}
+        .form-label {display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; color: #475569;}
+        .form-input {width: 100%; border-radius: 0.75rem; border: 1px solid #e2e8f0; padding: 0.65rem 0.85rem; font-size: 0.9rem; color: #0f172a; transition: all 0.2s ease;}
+        .form-input:focus {outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);}
+    </style>
+</head>
+<body class="h-full min-h-screen bg-slate-100" data-page="dashboard">
+    <div id="roleOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70">
+        <div class="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+            <h1 class="mb-3 text-2xl font-semibold text-slate-800" data-i18n="welcomeTitle">Welcome to FlyerTrack</h1>
+            <p class="mb-6 text-sm text-slate-500" data-i18n="welcomeSubtitle">Select your role to continue.</p>
+            <div class="space-y-4">
+                <button id="adminSelect" class="w-full rounded-xl bg-blue-600 py-3 text-white transition hover:bg-blue-700" data-role="admin" data-i18n="adminRole">Administrator</button>
+                <div class="rounded-2xl border border-slate-200 p-4">
+                    <label class="mb-2 block text-sm font-medium text-slate-600" for="branchSelect" data-i18n="branchRole">Branch User</label>
+                    <select id="branchSelect" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                        <option value="" data-i18n="selectBranch">Select branch</option>
+                    </select>
+                    <button id="branchConfirm" class="mt-3 w-full rounded-xl border border-blue-600 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-50" data-i18n="continue">Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex min-h-screen flex-col hidden" id="appWrapper">
+        <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+            <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">FT</span>
+                    <div>
+                        <h1 class="text-lg font-semibold text-slate-800" data-i18n="appTitle">FlyerTrack Dashboard</h1>
+                        <p class="text-xs text-slate-500" data-i18n="appSubtitle">Smart flyer distribution monitoring</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700" id="roleBadge"></div>
+                    <select id="languageSelect" class="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                        <option value="en">EN</option>
+                        <option value="th">TH</option>
+                        <option value="my">MM</option>
+                    </select>
+                    <button id="logoutBtn" class="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500 transition hover:border-red-300 hover:text-red-500" data-i18n="logout">Logout</button>
+                </div>
+            </div>
+            <nav class="border-t border-slate-100 bg-white/70">
+                <div class="mx-auto flex max-w-6xl gap-2 px-4 py-2 text-sm" id="primaryNav">
+                    <button class="nav-btn active" data-target="dashboard" data-i18n="navDashboard">Dashboard</button>
+                    <button class="nav-btn" data-target="records" data-i18n="navRecords">Records</button>
+                    <button class="nav-btn" data-target="formats" data-i18n="navFormats">Data Formats</button>
+                </div>
+            </nav>
+        </header>
+
+        <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+            <section id="dashboard" class="page-section space-y-6">
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-blue-100 text-blue-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h18M9 3v18m6-18v18M4.5 21h15a1.5 1.5 0 0 0 1.5-1.5v-15A1.5 1.5 0 0 0 19.5 3h-15A1.5 1.5 0 0 0 3 4.5v15A1.5 1.5 0 0 0 4.5 21Z"/></svg>
+                        </div>
+                        <div>
+                            <p class="stat-label" data-i18n="statTotalFlyers">Total Flyers</p>
+                            <p class="stat-value" id="totalFlyers">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-indigo-100 text-indigo-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l3 3m5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        </div>
+                        <div>
+                            <p class="stat-label" data-i18n="statActiveBranches">Active Branches</p>
+                            <p class="stat-value" id="activeBranches">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-sky-100 text-sky-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a3.375 3.375 0 1 1 6.75 0 3.375 3.375 0 0 1-6.75 0ZM19.5 12a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Zm-6.75 7.5 1.004 3.011a.563.563 0 0 0 1.076-.03l.63-2.362m-8.96-.62-.63 2.362a.563.563 0 0 0 1.076.03L7.25 19.5"/></svg>
+                        </div>
+                        <div>
+                            <p class="stat-label" data-i18n="statInteractions">Customer Interactions</p>
+                            <p class="stat-value" id="totalInteractions">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-cyan-100 text-cyan-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18l18-9L3 3Z"/></svg>
+                        </div>
+                        <div>
+                            <p class="stat-label" data-i18n="statPhotos">Photos Captured</p>
+                            <p class="stat-value" id="photoCount">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 lg:grid-cols-3">
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-center justify-between pb-3">
+                                <h2 class="text-lg font-semibold text-slate-800" data-i18n="mapTitle">Distribution Map</h2>
+                                <div class="flex items-center gap-2 text-xs" id="branchLegend"></div>
+                            </div>
+                            <div id="map" class="overflow-hidden rounded-2xl border border-slate-100"></div>
+                        </div>
+                        <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div class="flex items-center justify-between pb-3">
+                                <h2 class="text-lg font-semibold text-slate-800" data-i18n="chartTitle">Flyers by Branch</h2>
+                                <button id="refreshChart" class="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-500 transition hover:border-blue-300 hover:text-blue-600" data-i18n="refresh">Refresh</button>
+                            </div>
+                            <div id="branchChart" class="h-72"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <h3 class="mb-4 text-base font-semibold text-slate-800" data-i18n="quickActions">Quick Actions</h3>
+                            <div class="space-y-3 text-sm">
+                                <button id="openAddRecord" class="w-full rounded-xl bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700" data-i18n="addDistribution">Add Distribution Record</button>
+                                <button id="exportExcelBtn" class="w-full rounded-xl border border-blue-600 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50" data-i18n="exportExcel">Export Records to Excel</button>
+                                <button id="openFormats" class="w-full rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-600 transition hover:bg-slate-100" data-i18n="manageFormats">Manage Data Formats</button>
+                            </div>
+                        </div>
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <h3 class="mb-3 text-base font-semibold text-slate-800" data-i18n="recentActivity">Recent Activity</h3>
+                            <ul id="activityFeed" class="space-y-3 text-xs text-slate-600"></ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="records" class="page-section hidden space-y-4">
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-800" data-i18n="recordsTitle">Distribution Records</h2>
+                            <p class="text-xs text-slate-500" data-i18n="recordsSubtitle">Monitor and manage all flyer drops</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <div>
+                                <label class="text-slate-500" for="filterBranch" data-i18n="filterBranch">Branch</label>
+                                <select id="filterBranch" class="ml-2 rounded-lg border border-slate-200 px-2 py-1">
+                                    <option value="" data-i18n="allBranches">All branches</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-slate-500" for="filterCustomerType" data-i18n="filterCustomerType">Customer Type</label>
+                                <select id="filterCustomerType" class="ml-2 rounded-lg border border-slate-200 px-2 py-1">
+                                    <option value="" data-i18n="allTypes">All</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-slate-500" for="filterDate" data-i18n="filterDate">Date</label>
+                                <input type="date" id="filterDate" class="ml-2 rounded-lg border border-slate-200 px-2 py-1"/>
+                            </div>
+                            <button id="clearFilters" class="rounded-lg border border-slate-200 px-3 py-1 text-slate-500 transition hover:border-red-300 hover:text-red-500" data-i18n="clearFilters">Clear</button>
+                        </div>
+                    </div>
+                    <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                        <div class="max-h-[420px] overflow-auto scrollbar-thin">
+                            <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-2" data-i18n="tableDate">Date</th>
+                                        <th class="px-4 py-2" data-i18n="tableBranch">Branch</th>
+                                        <th class="px-4 py-2" data-i18n="tableAgent">Agent</th>
+                                        <th class="px-4 py-2" data-i18n="tableFlyers">Flyers</th>
+                                        <th class="px-4 py-2" data-i18n="tableInteractions">Interactions</th>
+                                        <th class="px-4 py-2" data-i18n="tableCustomerType">Customer Type</th>
+                                        <th class="px-4 py-2" data-i18n="tableLocation">Location</th>
+                                        <th class="px-4 py-2" data-i18n="tablePhoto">Photo</th>
+                                        <th class="px-4 py-2" data-i18n="tableActions">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="formats" class="page-section hidden space-y-4">
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-800" data-i18n="formatsTitle">Data Format Management</h2>
+                            <p class="text-xs text-slate-500" data-i18n="formatsSubtitle">Control export formats and standards</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <button id="addFormatBtn" class="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700" data-i18n="addFormat">New Format</button>
+                            <button id="exportFormatsBtn" class="rounded-lg border border-blue-600 px-4 py-2 font-medium text-blue-600 transition hover:bg-blue-50" data-i18n="exportFormats">Export All Formats</button>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid gap-4 md:grid-cols-3">
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-700">
+                            <p class="font-semibold" data-i18n="formatStatsTotal">Total Formats</p>
+                            <p class="text-2xl font-bold" id="formatTotal">0</p>
+                        </div>
+                        <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-700">
+                            <p class="font-semibold" data-i18n="formatStatsActive">Active Formats</p>
+                            <p class="text-2xl font-bold" id="formatActive">0</p>
+                        </div>
+                        <div class="rounded-2xl border border-sky-100 bg-sky-50/70 p-4 text-sm text-sky-700">
+                            <p class="font-semibold" data-i18n="formatStatsExport">Excel Ready Formats</p>
+                            <p class="text-2xl font-bold" id="formatExcel">0</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                        <div class="max-h-[360px] overflow-auto scrollbar-thin">
+                            <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-2" data-i18n="formatTableName">Name</th>
+                                        <th class="px-4 py-2" data-i18n="formatTableType">Type</th>
+                                        <th class="px-4 py-2" data-i18n="formatTableStatus">Status</th>
+                                        <th class="px-4 py-2" data-i18n="formatTableOptions">Options</th>
+                                        <th class="px-4 py-2" data-i18n="formatTableActions">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="formatsBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="recordModal" class="modal fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/70 px-4">
+        <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl scrollbar-thin">
+            <div class="flex items-center justify-between pb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800" data-i18n="recordModalTitle">Distribution Record</h3>
+                    <p class="text-xs text-slate-500" data-i18n="recordModalSubtitle">Capture flyer drop details</p>
+                </div>
+                <button class="rounded-full border border-slate-200 p-2 text-slate-400 transition hover:text-slate-600" data-close>
+                    <span class="sr-only">Close</span>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form id="recordForm" class="grid gap-4 md:grid-cols-2">
+                <input type="hidden" id="recordId" />
+                <div>
+                    <label class="form-label" for="recordDate" data-i18n="fieldDate">Date</label>
+                    <input id="recordDate" name="recordDate" type="date" class="form-input" required />
+                </div>
+                <div>
+                    <label class="form-label" for="recordBranch" data-i18n="fieldBranch">Branch</label>
+                    <select id="recordBranch" name="recordBranch" class="form-input" required></select>
+                </div>
+                <div>
+                    <label class="form-label" for="recordAgent" data-i18n="fieldAgent">Agent</label>
+                    <input id="recordAgent" name="recordAgent" type="text" class="form-input" required placeholder="Jane Doe" />
+                </div>
+                <div>
+                    <label class="form-label" for="recordFlyers" data-i18n="fieldFlyers">Number of Flyers</label>
+                    <input id="recordFlyers" name="recordFlyers" type="number" min="0" class="form-input" required />
+                </div>
+                <div>
+                    <label class="form-label" for="recordInteractions" data-i18n="fieldInteractions">Customer Interactions</label>
+                    <input id="recordInteractions" name="recordInteractions" type="number" min="0" class="form-input" required />
+                </div>
+                <div>
+                    <label class="form-label" for="recordCustomerType" data-i18n="fieldCustomerType">Customer Type</label>
+                    <select id="recordCustomerType" name="recordCustomerType" class="form-input" required></select>
+                </div>
+                <div id="recordLocationCard" class="md:col-span-2 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="form-label mb-0" data-i18n="fieldLocation">Location</p>
+                            <p id="recordLocationStatus" class="text-xs text-slate-500" role="status" aria-live="polite"></p>
+                        </div>
+                        <button type="button" id="recordUseLocation" class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                            Use current location
+                        </button>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="form-label" for="recordLatitude" data-i18n="fieldLatitude">Latitude</label>
+                            <input id="recordLatitude" name="recordLatitude" type="number" inputmode="decimal" step="0.000001" class="form-input" required readonly />
+                        </div>
+                        <div>
+                            <label class="form-label" for="recordLongitude" data-i18n="fieldLongitude">Longitude</label>
+                            <input id="recordLongitude" name="recordLongitude" type="number" inputmode="decimal" step="0.000001" class="form-input" required readonly />
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label" for="recordNotes" data-i18n="fieldNotes">Notes</label>
+                    <textarea id="recordNotes" name="recordNotes" class="form-input" rows="3" placeholder="Highlight the conversations and outcome"></textarea>
+                </div>
+                <div>
+                    <label class="form-label" for="recordPhoto" data-i18n="fieldPhoto">Photo Capture</label>
+                    <input id="recordPhoto" name="recordPhoto" type="file" accept="image/*" capture="environment" class="form-input" />
+                    <p class="mt-1 text-xs text-slate-400" data-i18n="photoHint">Use your phone camera to capture the distribution point</p>
+                </div>
+                <div class="flex items-center justify-center">
+                    <img id="photoPreview" class="hidden h-32 w-32 rounded-2xl border border-dashed border-slate-200 object-cover" alt="Preview" />
+                </div>
+                <div class="md:col-span-2 flex justify-end gap-3 pt-4">
+                    <button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-500 transition hover:border-red-300 hover:text-red-500" data-close data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700" data-i18n="saveRecord">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="formatModal" class="modal fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/70 px-4">
+        <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl scrollbar-thin">
+            <div class="flex items-center justify-between pb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800" data-i18n="formatModalTitle">Data Format</h3>
+                    <p class="text-xs text-slate-500" data-i18n="formatModalSubtitle">Configure export formatting rules</p>
+                </div>
+                <button class="rounded-full border border-slate-200 p-2 text-slate-400 transition hover:text-slate-600" data-close>
+                    <span class="sr-only">Close</span>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 18 12-12M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form id="formatForm" class="grid gap-4">
+                <input type="hidden" id="formatId" />
+                <div>
+                    <label class="form-label" for="formatName" data-i18n="formatFieldName">Format Name</label>
+                    <input id="formatName" name="formatName" type="text" class="form-input" required />
+                </div>
+                <div>
+                    <label class="form-label" for="formatType" data-i18n="formatFieldType">Format Type</label>
+                    <select id="formatType" name="formatType" class="form-input" required>
+                        <option value="Excel">Excel</option>
+                        <option value="CSV">CSV</option>
+                        <option value="PDF">PDF</option>
+                        <option value="JSON">JSON</option>
+                        <option value="XML">XML</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="formatDescription" data-i18n="formatFieldDescription">Description</label>
+                    <textarea id="formatDescription" name="formatDescription" class="form-input" rows="3"></textarea>
+                </div>
+                <div class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm text-slate-600 md:grid-cols-3">
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="formatIncludeHeaders" name="formatIncludeHeaders" class="rounded"/><span data-i18n="formatOptionHeaders">Include headers</span></label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="formatIncludeMetadata" name="formatIncludeMetadata" class="rounded"/><span data-i18n="formatOptionMetadata">Include metadata</span></label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="formatAutoExport" name="formatAutoExport" class="rounded"/><span data-i18n="formatOptionAuto">Auto export enabled</span></label>
+                </div>
+                <div>
+                    <label class="form-label" for="formatStatus" data-i18n="formatFieldStatus">Status</label>
+                    <select id="formatStatus" name="formatStatus" class="form-input" required>
+                        <option value="active" data-i18n="statusActive">Active</option>
+                        <option value="inactive" data-i18n="statusInactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-500 transition hover:border-red-300 hover:text-red-500" data-close data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700" data-i18n="saveFormat">Save Format</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <template id="photoTemplate">
+        <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <img class="h-32 w-32 rounded-2xl object-cover" src="" alt="Record photo" />
+        </div>
+    </template>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
